@@ -2,7 +2,7 @@
 set -e
 
 CONFIG_SRC_PIN="https://software.intel.com/sites/landingpage/pintool/downloads/pin-3.7-97619-g0d0c92f4f-gcc-linux.tar.gz"
-CONFIG_PATH_PINTOOL="myPintool.cpp"
+CONFIG_PATH_PINTOOL="wpmfs-pintool.cpp"
 CONFIG_PATH_OUTPUT="output"
 
 # 如果没有解压 pin，就解压 pin
