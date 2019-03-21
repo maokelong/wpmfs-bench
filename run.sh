@@ -2,6 +2,8 @@
 set -e
 
 CONFIG_SRC_PIN="https://software.intel.com/sites/landingpage/pintool/downloads/pin-3.7-97619-g0d0c92f4f-gcc-linux.tar.gz"
+CONFIG_SRC_WPMFS="https://github.com/maokelong/wpmfs"
+
 CONFIG_PATH_PINTOOL="wpmfs-pintool.cpp"
 CONFIG_PATH_OUTPUT="output"
 
@@ -20,6 +22,18 @@ cp $CONFIG_PATH_PINTOOL $(basename $CONFIG_SRC_PIN .tar.gz)/source/tools/MyPinTo
 pushd $(basename $CONFIG_SRC_PIN .tar.gz)/source/tools/MyPinTool
 make obj-intel64/$(basename $CONFIG_PATH_PINTOOL .cpp).so
 popd
+
+# 如果没有 mount wpmfs，就 mount wpmfs
+if [[ ! $(lsmod | grep wpmfs) ]];then
+  if [[ ! -d wpmfs ]];then
+    git clone https://github.com/maokelong/wpmfs wpmfs
+  fi
+  pushd wpmfs
+  bash scripts/install.sh
+  popd
+fi
+
+# TODO-MKL: 安装配置 whipser
 
 # 使用生成的 pintool 插桩应用
 if [[ ! -d $CONFIG_PATH_OUTPUT ]]; then

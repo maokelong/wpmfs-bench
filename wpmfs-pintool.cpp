@@ -5,11 +5,24 @@
 class PinMemAgent;
 
 /* ===================================================================== */
-/* Class Definitions */
+/* Class Declarations */
+/* ===================================================================== */
+
+class PinMemAgent;
+
+/* ===================================================================== */
+/* Global Variables */
 /* ===================================================================== */
 
 const size_t LenPage_k = 4 << 10;
 const int ThresSync_k = 194;
+std::ofstream TraceFile;
+PinMemAgent *PinMemAgent_g = NULL;
+
+/* ===================================================================== */
+/* Class Definitions */
+/* ===================================================================== */
+
 
 // 通用内存池
 template <typename T>
@@ -73,17 +86,14 @@ class PinMemAgent {
   void syncCnt(ADDRINT *addr) {
     // TODO-MKL: 考虑 unaligned mem acc
     // TODO-MKL: 通过 proc 同步
+    TraceFile << AppMemPool_g->addrToPageNum((uint8_t *)addr) << endl;
+    TraceFile << (*PinCntPool_g)[AppMemPool_g->addrToPageNum((uint8_t *)addr)]
+              << endl;
     (*PinCntPool_g)[AppMemPool_g->addrToPageNum((uint8_t *)addr)] = 0;
   }
 };
 
-/* ===================================================================== */
-/* Global Variables */
-/* ===================================================================== */
 
-std::ofstream TraceFile;
-
-PinMemAgent *PinMemAgent_g = NULL;
 
 /* ===================================================================== */
 /* Commandline Switches */

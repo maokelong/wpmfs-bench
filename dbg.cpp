@@ -1,25 +1,40 @@
+#include <fcntl.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <sys/mman.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 #include <x86intrin.h>
 
-// 数组声明
-char *HUGE_ARRAY;
-size_t HUGE_ARRAY_SIZE = 1024 * 1024 * 1024;
+uint8_t *PoolAddr = NULL;
+const size_t PoolSize_k = 1 * 1024 * 1024 * 1024;
+const char *PoolSrc = "/mnt/wpmfs/test";
 
 int main() {
-  // 初始化数组（使用映射段而非数据段）
-  HUGE_ARRAY = (char *)mmap((void *)0x600000000000, HUGE_ARRAY_SIZE,
-                            PROT_READ | PROT_WRITE,
-                            MAP_PRIVATE | MAP_ANON | MAP_FIXED, -1, 0);
-  // 打印数组基址
-  printf("%p\n", HUGE_ARRAY);
+  int fd, errno;
+  // 打开内存映射文件
+  if ((fd = open(PoolSrc, O_CREAT | O_RDWR, 0666)) < 0) {
+    printf("failed to open.\n");
+    return -1;
+  }
+
+  // 在上述文件中预留空洞
+  if ((errno = posix_fallocate(fd, 0, PoolSize_k)) != 0) {
+    printf("failed to fallocate.\n");
+    return -1;
+  }
+
+  // 内存映射
+  PoolAddr =
+      (uint8_t *)mmap((void *)0x600000000000, PoolSize_k,
+                      PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, fd, 0);
 
   // 测试 demand paging
   size_t i = 0;
-  for (int i = 0; i < HUGE_ARRAY_SIZE; i += 64) {
-    for (int j = 0; j < 64; ++j) HUGE_ARRAY[j] = 1;
-    _mm_clflush(&HUGE_ARRAY[i]);
+  for (int i = 0; i < PoolSize_k; i += 64) {
+    for (int j = 0; j < 64; ++j) PoolAddr[j] = 1;
+    _mm_clflush(&PoolAddr[i]);
   }
 
   return 0;
