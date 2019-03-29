@@ -25,15 +25,13 @@ mkdir -p obj-intel64
 make obj-intel64/$(basename $CONFIG_PATH_PINTOOL .cpp).so
 popd
 
-# 如果没有 mount wpmfs，就 mount wpmfs
-if [[ ! $(lsmod | grep wpmfs) ]]; then
-  if [[ ! -d wpmfs ]]; then
-    git clone https://github.com/maokelong/wpmfs wpmfs
-  fi
-  pushd wpmfs
-  bash scripts/install.sh
-  popd
+# mount/remount wpmfs
+if [[ ! -d wpmfs ]]; then
+  git clone https://github.com/maokelong/wpmfs wpmfs
 fi
+pushd wpmfs
+bash scripts/install.sh
+popd
 
 # TODO-MKL: 安装配置 whipser
 
@@ -45,7 +43,7 @@ if [[ ! -d $CONFIG_PATH_OUTPUT ]]; then
   mkdir -p $CONFIG_PATH_OUTPUT
 fi
 $(basename $CONFIG_SRC_PIN .tar.gz)/pin \
-  -t $(basename $CONFIG_SRC_PIN .tar.gz)/source/tools/MyPinTool/obj-intel64/$(basename $CONFIG_PATH_PINTOOL .cpp).so \
   -logfile "${CONFIG_PATH_OUTPUT}/pin.log" \
+  -t $(basename $CONFIG_SRC_PIN .tar.gz)/source/tools/MyPinTool/obj-intel64/$(basename $CONFIG_PATH_PINTOOL .cpp).so \
   -o "${CONFIG_PATH_OUTPUT}/pin.output" \
   -- ./"${CONFIG_PATH_DBG%.cpp}.out"

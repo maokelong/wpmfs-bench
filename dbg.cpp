@@ -8,7 +8,7 @@
 #include <x86intrin.h>
 
 uint8_t *PoolAddr = NULL;
-const size_t PoolSize_k = 1 * 1024 * 1024 * 1024;
+const size_t PoolSize_k = 128 * 1024 * 1024;
 const char *PoolSrc = "/mnt/wpmfs/test";
 
 int main() {

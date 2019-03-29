@@ -1,5 +1,8 @@
+#include <assert.h>
+#include <stdio.h>
 #include <fstream>
 #include <iostream>
+
 #include "pin.H"
 
 /* ===================================================================== */
@@ -7,6 +10,7 @@
 /* ===================================================================== */
 
 class PinMemAgent;
+class IOController;
 
 /* ===================================================================== */
 /* Global Variables */
@@ -16,11 +20,53 @@ const size_t LenPage_k = 4 << 10;
 const int ThresSync_k = 194;
 std::ofstream TraceFile;
 PinMemAgent *PinMemAgent_g = NULL;
+IOController *IOController_g = NULL;
 
 /* ===================================================================== */
 /* Class Definitions */
 /* ===================================================================== */
 
+// io controller
+class IOController {
+  FILE *fp;
+  struct {
+    int fd;
+    uint32_t opcode;
+    uint32_t pageoff;
+    uint32_t cnt;
+  } packet;
+
+  enum opcpde { WPMFS_INC_CNT = 0xBCD00020, WPMFS_GET_CNT = 0xBCD00021 };
+
+ public:
+  IOController(int fd) {
+    packet.fd = fd;
+    fp = fopen("/proc/wpmfs_proc", "w+");
+    assert(fp);
+  }
+
+  ~IOController()  {
+    fclose(fp);
+  }
+
+  void incCnt(uint32_t pageoff, uint32_t cnt) {
+    packet.opcode = WPMFS_INC_CNT;
+    packet.pageoff = pageoff;
+    packet.cnt = cnt;
+    fprintf(fp, "%d %u %u %u", packet.fd, packet.opcode, packet.pageoff,
+            packet.cnt);
+    fflush(fp);  //立即发送
+  }
+
+  size_t getCnt(uint32_t pageoff) {
+    packet.opcode = WPMFS_GET_CNT;
+    packet.pageoff = pageoff;
+    fprintf(fp, "%d %u %u", packet.fd, packet.opcode, packet.pageoff);
+    fflush(fp);  //立即发送
+    fscanf(fp, "%u", &packet.cnt);
+    return packet.cnt;
+  }
+};
 
 // 通用内存池
 template <typename T>
@@ -83,15 +129,13 @@ class PinMemAgent {
   // 将当前访问地址的写计数器同步到内核，并清空 Pin 维护的计数器
   void syncCnt(ADDRINT *addr) {
     // TODO-MKL: 考虑 unaligned mem acc
-    // TODO-MKL: 通过 proc 同步
-    TraceFile << AppMemPool_g->addrToPageNum((uint8_t *)addr) << endl;
-    TraceFile << (*PinCntPool_g)[AppMemPool_g->addrToPageNum((uint8_t *)addr)]
-              << endl;
-    (*PinCntPool_g)[AppMemPool_g->addrToPageNum((uint8_t *)addr)] = 0;
+    uint32_t pageOff = AppMemPool_g->addrToPageNum((uint8_t *)addr);
+    uint32_t &writeCnt =
+        (*PinCntPool_g)[AppMemPool_g->addrToPageNum((uint8_t *)addr)];
+    IOController_g->incCnt(pageOff, writeCnt);
+    writeCnt = 0;
   }
 };
-
-
 
 /* ===================================================================== */
 /* Commandline Switches */
@@ -106,9 +150,11 @@ KNOB<string> KnobOutputFile(KNOB_MODE_WRITEONCE, "pintool", "o",
 /* Analysis routines                                                     */
 /* ===================================================================== */
 
-VOID mmapBefore(ADDRINT *addr, ADDRINT length, ADDRINT offset) {
-  if (PinMemAgent_g == NULL && addr != NULL)
+VOID mmapBefore(ADDRINT *addr, ADDRINT length, ADDRINT fd, ADDRINT offset) {
+  if (PinMemAgent_g == NULL && addr != NULL && (int)fd != -1) {
     PinMemAgent_g = new PinMemAgent(addr, length, offset);
+    IOController_g = new IOController(fd);
+  }
 }
 
 INT32 trigerCntSync(ADDRINT *addr, ADDRINT size) {
@@ -130,6 +176,7 @@ VOID Image(IMG img, VOID *v) {
     RTN_InsertCall(mmapRtn, IPOINT_BEFORE, (AFUNPTR)mmapBefore,
                    IARG_FUNCARG_ENTRYPOINT_VALUE, 0,  // 传递 addr
                    IARG_FUNCARG_ENTRYPOINT_VALUE, 1,  // 传递 length
+                   IARG_FUNCARG_ENTRYPOINT_VALUE, 4,  // 传递 fd
                    IARG_FUNCARG_ENTRYPOINT_VALUE, 5,  // 传递 offset
                    IARG_END                           // 结束参数传递
     );
@@ -161,7 +208,12 @@ VOID Instruction(INS ins, VOID *v) {
 
 /* ===================================================================== */
 
-VOID Fini(INT32 code, VOID *v) { TraceFile.close(); }
+VOID Fini(INT32 code, VOID *v) {
+  // TODO-MKL: 将所有计数器都同步到内核。
+  TraceFile.close();
+  delete IOController_g;
+  delete PinMemAgent_g;
+}
 
 /* ===================================================================== */
 /* Print Help Message                                                    */
@@ -169,7 +221,11 @@ VOID Fini(INT32 code, VOID *v) { TraceFile.close(); }
 
 INT32
 Usage() {
-  cerr << "This tool produces a trace of calls to malloc." << endl;
+  cerr << "This tool traces stores to wpmfs." << endl;
+  cerr << "Be sure that intel pin is available." << endl;
+  cerr << "Be sure that you've specified the location of "
+          "wpmfs and the corresponding proc file correctly."
+       << endl;
   cerr << endl << KNOB_BASE::StringKnobSummary() << endl;
   return -1;
 }
