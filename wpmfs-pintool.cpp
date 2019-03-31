@@ -1,5 +1,4 @@
 #include <assert.h>
-#include <stdio.h>
 #include <fstream>
 #include <iostream>
 
@@ -18,6 +17,8 @@ class IOController;
 
 const size_t LenPage_k = 4 << 10;
 const int ThresSync_k = 194;
+const int BufSize_k = 128;
+
 std::ofstream TraceFile;
 PinMemAgent *PinMemAgent_g = NULL;
 IOController *IOController_g = NULL;
@@ -28,43 +29,64 @@ IOController *IOController_g = NULL;
 
 // io controller
 class IOController {
-  FILE *fp;
+  NATIVE_FD nfd;
+#pragma pack(1)  // 统一不加 padding
   struct {
     int fd;
     uint32_t opcode;
     uint32_t pageoff;
     uint32_t cnt;
-  } packet;
+  } message;
+#pragma pack()
 
   enum opcpde { WPMFS_INC_CNT = 0xBCD00020, WPMFS_GET_CNT = 0xBCD00021 };
 
  public:
   IOController(int fd) {
-    packet.fd = fd;
-    fp = fopen("/proc/wpmfs_proc", "w+");
-    assert(fp);
+    OS_RETURN_CODE ret;
+    message.fd = fd;
+    // 以读写模式打开 proc 文件，该文件必须已存在
+    ret = OS_OpenFD("/proc/wpmfs_proc",
+                    OS_FILE_OPEN_TYPE_READ | OS_FILE_OPEN_TYPE_WRITE |
+                        OS_FILE_OPEN_TYPE_TRUNCATE,
+                    0, &nfd);
+    assert(ret.generic_err == OS_RETURN_CODE_NO_ERROR);
   }
 
-  ~IOController()  {
-    fclose(fp);
-  }
+  ~IOController() { OS_CloseFD(nfd); }
 
   void incCnt(uint32_t pageoff, uint32_t cnt) {
-    packet.opcode = WPMFS_INC_CNT;
-    packet.pageoff = pageoff;
-    packet.cnt = cnt;
-    fprintf(fp, "%d %u %u %u", packet.fd, packet.opcode, packet.pageoff,
-            packet.cnt);
-    fflush(fp);  //立即发送
+    OS_RETURN_CODE ret;
+    USIZE len = sizeof(message);
+
+    /* 封装请求 */
+    message.opcode = WPMFS_INC_CNT;
+    message.pageoff = pageoff;
+    message.cnt = cnt;
+
+    /* 发送请求 */
+    ret = OS_WriteFD(nfd, &message, &len);
+    assert(ret.generic_err == OS_RETURN_CODE_NO_ERROR);
+
+    getCnt(pageoff);
   }
 
   size_t getCnt(uint32_t pageoff) {
-    packet.opcode = WPMFS_GET_CNT;
-    packet.pageoff = pageoff;
-    fprintf(fp, "%d %u %u", packet.fd, packet.opcode, packet.pageoff);
-    fflush(fp);  //立即发送
-    fscanf(fp, "%u", &packet.cnt);
-    return packet.cnt;
+    OS_RETURN_CODE ret;
+    USIZE len = sizeof(message) - sizeof(message.cnt);
+    message.opcode = WPMFS_GET_CNT;
+    message.pageoff = pageoff;
+
+    /* 发送请求 */
+    ret = OS_WriteFD(nfd, &message, &len);
+    assert(ret.generic_err == OS_RETURN_CODE_NO_ERROR);
+
+    /* 读取响应 */
+    len = sizeof(message.cnt);
+    ret = OS_ReadFD(nfd, &len, &message.cnt);
+    assert(ret.generic_err == OS_RETURN_CODE_NO_ERROR);
+
+    return message.cnt;
   }
 };
 
