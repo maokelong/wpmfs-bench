@@ -34,8 +34,8 @@ class IOController {
   struct {
     int fd;
     uint32_t opcode;
-    uint32_t pageoff;
-    uint32_t cnt;
+    uint64_t pageoff;
+    uint64_t cnt;
   } message;
 #pragma pack()
 
@@ -55,7 +55,7 @@ class IOController {
 
   ~IOController() { OS_CloseFD(nfd); }
 
-  void incCnt(uint32_t pageoff, uint32_t cnt) {
+  void incCnt(uint64_t pageoff, uint64_t cnt) {
     OS_RETURN_CODE ret;
     USIZE len = sizeof(message);
 
@@ -71,7 +71,7 @@ class IOController {
     getCnt(pageoff);
   }
 
-  size_t getCnt(uint32_t pageoff) {
+  size_t getCnt(uint64_t pageoff) {
     OS_RETURN_CODE ret;
     USIZE len = sizeof(message) - sizeof(message.cnt);
     message.opcode = WPMFS_GET_CNT;
@@ -126,13 +126,13 @@ struct MemPool {
 // 内存池代理
 class PinMemAgent {
   MemPool<uint8_t> *AppMemPool_g;  // 托管的应用申请的内存池
-  MemPool<uint32_t> *PinCntPool_g;  // 托管的 pin 维护的计数器的内存池
+  MemPool<uint64_t> *PinCntPool_g;  // 托管的 pin 维护的计数器的内存池
 
  public:
   PinMemAgent(ADDRINT *addr, ADDRINT len, ADDRINT offset) {
     AppMemPool_g = new MemPool<uint8_t>((uint8_t *)(addr), len, offset);
     len = len / LenPage_k;
-    PinCntPool_g = new MemPool<uint32_t>(new uint32_t[len](), len, 0);
+    PinCntPool_g = new MemPool<uint64_t>(new uint64_t[len](), len, 0);
   }
 
   ~PinMemAgent() { delete PinCntPool_g->addr; }
@@ -151,8 +151,8 @@ class PinMemAgent {
   // 将当前访问地址的写计数器同步到内核，并清空 Pin 维护的计数器
   void syncCnt(ADDRINT *addr) {
     // TODO-MKL: 考虑 unaligned mem acc
-    uint32_t pageOff = AppMemPool_g->addrToPageNum((uint8_t *)addr);
-    uint32_t &writeCnt =
+    uint64_t pageOff = AppMemPool_g->addrToPageNum((uint8_t *)addr);
+    uint64_t &writeCnt =
         (*PinCntPool_g)[AppMemPool_g->addrToPageNum((uint8_t *)addr)];
     IOController_g->incCnt(pageOff, writeCnt);
     writeCnt = 0;
