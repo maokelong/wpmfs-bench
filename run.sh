@@ -42,7 +42,7 @@ g++ $CONFIG_PATH_DBG -msse2 -o "${CONFIG_PATH_DBG%.cpp}.out"
 if [[ ! -d $CONFIG_PATH_OUTPUT ]]; then
   mkdir -p $CONFIG_PATH_OUTPUT
 fi
-$(basename $CONFIG_SRC_PIN .tar.gz)/pin \
+time $(basename $CONFIG_SRC_PIN .tar.gz)/pin \
   -logfile "${CONFIG_PATH_OUTPUT}/pin.log" \
   -t $(basename $CONFIG_SRC_PIN .tar.gz)/source/tools/MyPinTool/obj-intel64/$(basename $CONFIG_PATH_PINTOOL .cpp).so \
   -o "${CONFIG_PATH_OUTPUT}/pin.output" \

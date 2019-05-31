@@ -8,7 +8,7 @@
 #include <x86intrin.h>
 
 uint8_t *PoolAddr = NULL;
-const size_t PoolSize_k = 128 * 1024 * 1024;
+const uint64_t PoolSize_k = (uint64_t)1 * 1024 * 1024 * 1024;
 const char *PoolSrc = "/mnt/wpmfs/test";
 
 int main() {
@@ -31,9 +31,8 @@ int main() {
                       PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, fd, 0);
 
   // 测试 demand paging
-  size_t i = 0;
-  for (int i = 0; i < PoolSize_k; i += 64) {
-    for (int j = 0; j < 64; ++j) PoolAddr[j] = 1;
+  for (uint64_t i = 0; i < PoolSize_k; i += 64) {
+    for (uint64_t j = 0; j < 64; ++j) PoolAddr[j] = 1;
     _mm_clflush(&PoolAddr[i]);
   }
 
