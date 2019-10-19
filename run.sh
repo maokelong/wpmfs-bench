@@ -33,10 +33,10 @@ pushd wpmfs
 bash scripts/install.sh
 popd
 
-# TODO-MKL: 安装配置 whipser
+# TODO: 安装配置 whipser
 
-# 生成测试用应用
-g++ $CONFIG_PATH_DBG -msse2 -o "${CONFIG_PATH_DBG%.cpp}.out"
+# 生成 microbenchmark
+g++ $CONFIG_PATH_DBG -msse2 -o "${CONFIG_PATH_DBG%.cpp}.out" -Imicro_bench
 
 # 使用生成的 pintool 插桩应用
 if [[ ! -d $CONFIG_PATH_OUTPUT ]]; then
