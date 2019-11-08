@@ -7,7 +7,7 @@
 /* ===================================================================== */
 /* Class Declarations */
 /* ===================================================================== */
- 
+
 class PinMemAgent;
 class IOController;
 
@@ -30,63 +30,100 @@ IOController *IOController_g = NULL;
 // io controller
 class IOController {
   NATIVE_FD nfd;
+  int mfd;
 #pragma pack(1)  // 统一不加 padding
   struct {
-    int fd;
-    uint32_t opcode;
-    uint64_t pageoff;
-    uint64_t cnt;
+    unsigned opcode;
+
+    union {
+      struct {
+        int fd;
+        uint64_t pageoff;  // 被统计页起始位置相对于文件的偏移
+        uint64_t page_wcnt;  // 被统计页的写次数（读写取决于命令）
+      };
+
+      uint64_t capacity;
+
+      struct {
+        uint64_t blocknr;
+        uint64_t blk_wcnt;
+      };
+    };
+
+    uint8_t succ;
   } message;
 #pragma pack()
 
-  enum opcpde { WPMFS_INC_CNT = 0xBCD00020, WPMFS_GET_CNT = 0xBCD00021 };
+  enum opcpde {
+    WPMFS_INC_CNT = 0xBCD00020,
+    WPMFS_GET_CNT,
+    WPMFS_CMD_GET_FS_CAP,
+    WPMFS_CMD_GET_FS_WEAR
+  };
+
+  void request() {
+    OS_RETURN_CODE ret;
+    USIZE len = sizeof(message);
+
+    ret = OS_WriteFD(nfd, &message, &len);
+    assert(ret.generic_err == OS_RETURN_CODE_NO_ERROR);
+    assert(message.succ);
+  }
+  void fetch() {
+    OS_RETURN_CODE ret;
+    USIZE len = sizeof(message);
+
+    ret = OS_ReadFD(nfd, &len, &message);
+    assert(ret.generic_err == OS_RETURN_CODE_NO_ERROR);
+    assert(message.succ);
+  }
+
+  void requestAndFetch() {
+    request();
+    fetch();
+  }
 
  public:
   IOController(int fd) {
     OS_RETURN_CODE ret;
-    message.fd = fd;
     // 以读写模式打开 proc 文件，该文件必须已存在
     ret = OS_OpenFD("/proc/wpmfs_proc",
                     OS_FILE_OPEN_TYPE_READ | OS_FILE_OPEN_TYPE_WRITE |
                         OS_FILE_OPEN_TYPE_TRUNCATE,
                     0, &nfd);
     assert(ret.generic_err == OS_RETURN_CODE_NO_ERROR);
+    mfd = fd;
   }
 
   ~IOController() { OS_CloseFD(nfd); }
 
   void incCnt(uint64_t pageoff, uint64_t cnt) {
-    OS_RETURN_CODE ret;
-    USIZE len = sizeof(message);
-
-    /* 封装请求 */
     message.opcode = WPMFS_INC_CNT;
+    message.fd = mfd;
     message.pageoff = pageoff;
-    message.cnt = cnt;
-
-    /* 发送请求 */
-    ret = OS_WriteFD(nfd, &message, &len);
-    assert(ret.generic_err == OS_RETURN_CODE_NO_ERROR);
-
-    getCnt(pageoff);
+    message.page_wcnt = cnt;
+    request();
   }
 
   size_t getCnt(uint64_t pageoff) {
-    OS_RETURN_CODE ret;
-    USIZE len = sizeof(message) - sizeof(message.cnt);
     message.opcode = WPMFS_GET_CNT;
-    message.pageoff = pageoff;
+    message.fd = mfd;
+    requestAndFetch();
 
-    /* 发送请求 */
-    ret = OS_WriteFD(nfd, &message, &len);
-    assert(ret.generic_err == OS_RETURN_CODE_NO_ERROR);
+    return message.page_wcnt;
+  }
 
-    /* 读取响应 */
-    len = sizeof(message.cnt);
-    ret = OS_ReadFD(nfd, &len, &message.cnt);
-    assert(ret.generic_err == OS_RETURN_CODE_NO_ERROR);
+  size_t getFsCap() {
+    message.opcode = WPMFS_CMD_GET_FS_CAP;
+    requestAndFetch();
+    return message.capacity;
+  }
 
-    return message.cnt;
+  size_t getFsBlkCnt(size_t blocknr) {
+    message.opcode = WPMFS_CMD_GET_FS_WEAR;
+    message.blocknr = blocknr;
+    requestAndFetch();
+    return message.blk_wcnt;
   }
 };
 
@@ -99,10 +136,14 @@ struct MemPool {
   T *addr;
   size_t len;
   int offset;
+  size_t itemSize;
 
  public:
-  MemPool(T *addr, size_t len, int offset)
-      : addr(static_cast<T *>(addr)), len(len), offset(offset) {}
+  MemPool(T *addr, size_t len, int offset, size_t itemSize)
+      : addr(static_cast<T *>(addr)),
+        len(len),
+        offset(offset),
+        itemSize(itemSize) {}
 
   // 给定地址是否在内存池地址范围内，自动内联
   bool addrInPool(T *addr) {
@@ -110,17 +151,20 @@ struct MemPool {
   }
 
   // 给定地址的逻辑页号（不考虑偏移），自动内联
-  size_t addrToPageNum(T *addr) {
-    return (addr - this->addr) * sizeof(T) / LenPage_k;
+  size_t addrToItemIndex(T *addr) {
+    return (addr - this->addr) * sizeof(T) / itemSize;
   }
 
   // 给定地址的逻辑页号（考虑偏移），自动内联
-  size_t addrToPageNumReal(T *addr) {
-    return (offset + addr - this->addr) * sizeof(T) / LenPage_k;
+  size_t addrToItemIndexReal(T *addr) {
+    return addrToItemIndex(addr) + offset / itemSize;
   }
 
   // 通过 [] 访问内存池
   T &operator[](int index) { return addr[index]; }
+
+  size_t getNumItems() { return len / itemSize; }
+  size_t getFstIndexReal() { return offset / itemSize; }
 };
 
 // 内存池代理
@@ -130,9 +174,11 @@ class PinMemAgent {
 
  public:
   PinMemAgent(ADDRINT *addr, ADDRINT len, ADDRINT offset) {
-    AppMemPool_g = new MemPool<uint8_t>((uint8_t *)(addr), len, offset);
+    AppMemPool_g =
+        new MemPool<uint8_t>((uint8_t *)(addr), len, offset, LenPage_k);
     len = len / LenPage_k;
-    PinCntPool_g = new MemPool<uint64_t>(new uint64_t[len](), len, 0);
+    PinCntPool_g =
+        new MemPool<uint64_t>(new uint64_t[len](), len, 0, sizeof(uint64_t));
   }
 
   ~PinMemAgent() { delete PinCntPool_g->addr; }
@@ -144,18 +190,44 @@ class PinMemAgent {
 
   // 当前访问地址的写计数器是否抵达阈值？
   bool cntReachThres(ADDRINT *addr, ADDRINT size) {
-    return ((*PinCntPool_g)[AppMemPool_g->addrToPageNum((uint8_t *)addr)] +=
+    return ((*PinCntPool_g)[AppMemPool_g->addrToItemIndex((uint8_t *)addr)] +=
             size) >= ThresSync_k;
   }
 
   // 将当前访问地址的写计数器同步到内核，并清空 Pin 维护的计数器
   void syncCnt(ADDRINT *addr) {
     // TODO-MKL: 考虑 unaligned mem acc
-    uint64_t pageOff = AppMemPool_g->addrToPageNum((uint8_t *)addr);
+    uint64_t pageOffReal = AppMemPool_g->addrToItemIndexReal((uint8_t *)addr);
     uint64_t &writeCnt =
-        (*PinCntPool_g)[AppMemPool_g->addrToPageNum((uint8_t *)addr)];
-    IOController_g->incCnt(pageOff, writeCnt);
+        (*PinCntPool_g)[AppMemPool_g->addrToItemIndex((uint8_t *)addr)];
+    IOController_g->incCnt(pageOffReal, writeCnt);
     writeCnt = 0;
+  }
+
+  void syncCntAll() {
+    size_t numCnt = PinCntPool_g->getNumItems();
+    size_t fstIndex = AppMemPool_g->getFstIndexReal();
+    for (size_t i = 0; i < numCnt; ++i) {
+      uint64_t &writeCnt = (*PinCntPool_g)[i];
+      IOController_g->incCnt(i + fstIndex, writeCnt);
+    }
+  }
+
+  void dumpFsCntAll() {
+    size_t fs_cap = IOController_g->getFsCap();
+
+
+    cout << "Dumping the write times that each page has suffered. Please wait."
+         << endl;
+
+    TraceFile << "Capacity of WPMFS(in bytes): " << fs_cap << std::endl;
+    TraceFile << "Wear of all pages" << std::endl;
+
+    fs_cap /= LenPage_k;
+    for (size_t i = 0; i < fs_cap; ++i) {
+      size_t fsBlkCnt = IOController_g->getFsBlkCnt(i);
+      if (fsBlkCnt) TraceFile << i << '\t' << fsBlkCnt << endl;
+    }
   }
 };
 
@@ -226,12 +298,16 @@ VOID Instruction(INS ins, VOID *v) {
     );
   }
   // TODO-MKL: 支持 non-temperal store 指令，如有需要
+  // TODO-MKL: 基于 Simulated Cache，关注 Cache Eviction
 }
 
 /* ===================================================================== */
 
 VOID Fini(INT32 code, VOID *v) {
-  // TODO-MKL: 将所有计数器都同步到内核。
+  // TODO: 可能因文件关闭导致无法同步，fixme。
+  PinMemAgent_g->syncCntAll();
+  PinMemAgent_g->dumpFsCntAll();
+
   TraceFile.close();
   delete IOController_g;
   delete PinMemAgent_g;
@@ -265,7 +341,6 @@ int main(int argc, char *argv[]) {
 
   // Write to a file since cout and cerr maybe closed by the application
   TraceFile.open(KnobOutputFile.Value().c_str());
-  TraceFile << hex;
   TraceFile.setf(ios::showbase);
 
   // Register Instruction/Image to be called to instrument functions.

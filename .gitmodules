@@ -1,4 +1,3 @@
 [submodule "wpmfs"]
 path = wpmfs
 url = github.com/maokelong/wpmfs.git
-ignore = all
