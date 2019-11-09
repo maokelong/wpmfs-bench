@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <ctime>
 #include <fstream>
 #include <iostream>
 
@@ -97,33 +98,36 @@ class IOController {
 
   ~IOController() { OS_CloseFD(nfd); }
 
-  void incCnt(uint64_t pageoff, uint64_t cnt) {
+  bool incCnt(uint64_t pageoff, uint64_t cnt) {
     message.opcode = WPMFS_INC_CNT;
     message.fd = mfd;
     message.pageoff = pageoff;
     message.page_wcnt = cnt;
     request();
+    return message.succ == 1;
   }
 
-  size_t getCnt(uint64_t pageoff) {
+  bool getCnt(uint64_t pageof, uint64_t &cnt) {
     message.opcode = WPMFS_GET_CNT;
     message.fd = mfd;
     requestAndFetch();
-
-    return message.page_wcnt;
+    cnt = message.page_wcnt;
+    return message.succ == 1;
   }
 
-  size_t getFsCap() {
+  bool getFsCap(uint64_t &capacity) {
     message.opcode = WPMFS_CMD_GET_FS_CAP;
     requestAndFetch();
-    return message.capacity;
+    capacity = message.capacity;
+    return message.succ == 1;
   }
 
-  size_t getFsBlkCnt(size_t blocknr) {
+  bool getFsBlkCnt(size_t blocknr, uint64_t &blk_wcnt) {
     message.opcode = WPMFS_CMD_GET_FS_WEAR;
     message.blocknr = blocknr;
     requestAndFetch();
-    return message.blk_wcnt;
+    blk_wcnt = message.blk_wcnt;
+    return message.succ == 1;
   }
 };
 
@@ -205,29 +209,54 @@ class PinMemAgent {
   }
 
   void syncCntAll() {
+    clock_t start, end;
     size_t numCnt = PinCntPool_g->getNumItems();
     size_t fstIndex = AppMemPool_g->getFstIndexReal();
+
+    cout << "Sync-ing all write tracking counter buffers with WPMFS. "
+         << "Please wait." << endl;
+
+    start = clock();
     for (size_t i = 0; i < numCnt; ++i) {
       uint64_t &writeCnt = (*PinCntPool_g)[i];
-      IOController_g->incCnt(i + fstIndex, writeCnt);
+      if (IOController_g->incCnt(i + fstIndex, writeCnt)) continue;
+
+      std::cout
+          << "Some error occurred while sync-ing. Mmaped-file may be closed."
+          << std::endl;
+      break;
     }
+    end = clock();
+    std::cout << "Sync-ing has finished. Time elapsed = "
+              << (double)(end - start) / CLOCKS_PER_SEC << "s." << std::endl;
   }
 
   void dumpFsCntAll() {
-    size_t fs_cap = IOController_g->getFsCap();
-
+    clock_t start, end;
+    size_t fs_cap;
 
     cout << "Dumping the write times that each page has suffered. Please wait."
          << endl;
 
+    IOController_g->getFsCap(fs_cap);
     TraceFile << "Capacity of WPMFS(in bytes): " << fs_cap << std::endl;
-    TraceFile << "Wear of all pages" << std::endl;
 
+    TraceFile << "Wear of all pages" << std::endl;
+    start = clock();
     fs_cap /= LenPage_k;
     for (size_t i = 0; i < fs_cap; ++i) {
-      size_t fsBlkCnt = IOController_g->getFsBlkCnt(i);
-      if (fsBlkCnt) TraceFile << i << '\t' << fsBlkCnt << endl;
+      size_t fsBlkCnt;
+      if (IOController_g->getFsBlkCnt(i, fsBlkCnt)) {
+        TraceFile << i << '\t' << fsBlkCnt << endl;
+      } else {
+        std::cout << "Some error occurred while dumping." << std::endl;
+        break;
+      }
     }
+    end = clock();
+
+    std::cout << "Dumping has finished. Time elapsed = "
+              << (double)(end - start) / CLOCKS_PER_SEC << "s." << std::endl;
   }
 };
 
