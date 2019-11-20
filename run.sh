@@ -41,36 +41,38 @@ if [[ ! -d wpmfs ]]; then
   git clone $CONFIG_SRC_WPMFS wpmfs
 fi
 pushd wpmfs
-bash scripts/install.sh
+# bash scripts/install.sh
 popd
 echo -e "\e[32mWpmfs-bench: Wpmfs installed.\e[39m"
 
+cmds=""
 # install micro benchmark
 pushd micro_bench
 source install.sh
+cmds="$cmds$CONFIG_CMD_MICRO"
 popd
 echo -e "\e[32mWpmfs-bench: Micro-benchmark installed.\e[39m"
 
-mkdir -p $CONFIG_PATH_OUTPUT
+# install macro benchmark
+pushd macro_bench
+source install.sh
+cmds="$cmds$CONFIG_CMD_MACRO"
+popd
+echo -e "\e[32mWpmfs-bench: Macro-benchmark installed.\e[39m"
 
 # run benchmarks
-time $pin_path/pin \
-  -logfile "${CONFIG_PATH_OUTPUT}/pin.log" \
-  -t $pin_so_path \
-  -o "${CONFIG_PATH_OUTPUT}/pin.output" \
-  -- "${CONFIG_PATH_MICRO%.cpp}.out"
-echo -e "\e[32mWpmfs-bench: Micro-benchmark finished.\e[39m"
+mkdir -p $CONFIG_PATH_OUTPUT
+echo -e $cmds | while read cmd; do
+	bench_name=$(basename ${cmd##* })
+	pin_output="${CONFIG_PATH_OUTPUT}/pin.output.$bench_name"
+	wrdis_graph="${CONFIG_PATH_OUTPUT}/pin.output.graph.$bench_name"
 
-wr_dis_graph="${CONFIG_PATH_OUTPUT}/wr_dis.png"
-python $CONFIG_PATH_PY_DUMP_WR_DIS \
-  "${CONFIG_PATH_OUTPUT}/pin.output" \
-  $wr_dis_graph
-echo -e "\e[32mWpmfs-bench: Write distribution of wpmfs is saved in $wr_dis_graph.\e[39m"
+	sudo time $pin_path/pin \
+	-logfile "${CONFIG_PATH_OUTPUT}/pin.log.$bench_name" \
+	-t $pin_so_path \
+	-o $pin_output \
+	-- $cmd
 
-# TODO: 安装配置 whipser
-# TODO: 安装配置 filebench
-# sudo time $pin_path/pin \
-#   -logfile "${CONFIG_PATH_OUTPUT}/pin.log" \
-#   -t $pin_so_path  \
-#   -o "${CONFIG_PATH_OUTPUT}/pin.output" \
-#   -- filebench -f macro_bench/webserver.f
+	python $CONFIG_PATH_PY_DUMP_WR_DIS $pin_output $wrdis_graph
+	echo -e "\e[32mWpmfs-bench: cmd $cmd finished.\e[39m"
+done
