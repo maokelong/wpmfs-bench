@@ -1,7 +1,9 @@
 [submodule "wpmfs"]
 path = wpmfs
 url = github.com/maokelong/wpmfs.git
+ignore = all
 
 [submodule "filebench"]
 path = macro_bench/filebench
 url = github.com/filebench/filebench.git
+ignore = all
