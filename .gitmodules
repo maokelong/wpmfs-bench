@@ -1,3 +1,7 @@
 [submodule "wpmfs"]
 path = wpmfs
 url = github.com/maokelong/wpmfs.git
+
+[submodule "filebench"]
+path = macro_bench/filebench
+url = github.com/filebench/filebench.git

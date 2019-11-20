@@ -239,14 +239,13 @@ class PinMemAgent {
          << endl;
 
     IOController_g->getFsCap(fs_cap);
-    TraceFile << "Capacity of WPMFS(in bytes): " << fs_cap << std::endl;
+    // TraceFile << "Capacity of WPMFS(in bytes): " << fs_cap << std::endl;
 
-    TraceFile << "Wear of all pages" << std::endl;
     start = clock();
     fs_cap /= LenPage_k;
     for (size_t i = 0; i < fs_cap; ++i) {
       size_t fsBlkCnt;
-      if (IOController_g->getFsBlkCnt(i, fsBlkCnt)) {
+      if (IOController_g->getFsBlkCnt(i, fsBlkCnt) && fsBlkCnt != 0) {
         TraceFile << i << '\t' << fsBlkCnt << endl;
       } else {
         std::cout << "Some error occurred while dumping." << std::endl;
@@ -334,12 +333,16 @@ VOID Instruction(INS ins, VOID *v) {
 
 VOID Fini(INT32 code, VOID *v) {
   // TODO: 可能因文件关闭导致无法同步，fixme。
+  if (!PinMemAgent_g) PinMemAgent_g = new PinMemAgent(NULL, 0, 0);
+  if (!IOController_g) IOController_g = new IOController(-1);
+
   PinMemAgent_g->syncCntAll();
   PinMemAgent_g->dumpFsCntAll();
 
-  TraceFile.close();
-  delete IOController_g;
   delete PinMemAgent_g;
+  delete IOController_g;
+
+  TraceFile.close();
 }
 
 /* ===================================================================== */
