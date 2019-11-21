@@ -245,12 +245,8 @@ class PinMemAgent {
     fs_cap /= LenPage_k;
     for (size_t i = 0; i < fs_cap; ++i) {
       size_t fsBlkCnt;
-      if (IOController_g->getFsBlkCnt(i, fsBlkCnt) && fsBlkCnt != 0) {
+      if (IOController_g->getFsBlkCnt(i, fsBlkCnt) && fsBlkCnt != 0)
         TraceFile << i << '\t' << fsBlkCnt << endl;
-      } else {
-        std::cout << "Some error occurred while dumping." << std::endl;
-        break;
-      }
     }
     end = clock();
 
