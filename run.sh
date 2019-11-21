@@ -41,7 +41,7 @@ if [[ ! -d wpmfs ]]; then
   git clone $CONFIG_SRC_WPMFS wpmfs
 fi
 pushd wpmfs
-# bash scripts/install.sh
+bash scripts/install.sh
 popd
 echo -e "\e[32mWpmfs-bench: Wpmfs installed.\e[39m"
 
@@ -64,11 +64,11 @@ echo -e "\e[32mWpmfs-bench: Macro-benchmark installed.\e[39m"
 mkdir -p $CONFIG_PATH_OUTPUT
 echo -e $cmds | while read cmd; do
 	bench_name=$(basename ${cmd##* })
-	pin_output="${CONFIG_PATH_OUTPUT}/pin.output.$bench_name"
-	wrdis_graph="${CONFIG_PATH_OUTPUT}/pin.output.graph.$bench_name"
+	pin_output="${CONFIG_PATH_OUTPUT}/raw.$bench_name"
+	wrdis_graph="${CONFIG_PATH_OUTPUT}/graph.$bench_name.png"
 
 	sudo time $pin_path/pin \
-	-logfile "${CONFIG_PATH_OUTPUT}/pin.log.$bench_name" \
+	-logfile "${CONFIG_PATH_OUTPUT}/log.$bench_name" \
 	-t $pin_so_path \
 	-o $pin_output \
 	-- $cmd
