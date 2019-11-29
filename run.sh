@@ -36,6 +36,10 @@ pin_so_path=$(realpath -e obj-intel64/$pin_so)
 popd
 echo -e "\e[32mWpmfs-bench: Pintool installed.\e[39m"
 
+# clear syslog
+sudo bash -c 'echo "" > /var/log/syslog'
+echo -e "\e[32mWpmfs-bench: /var/log/syslog cleared.\e[39m"
+
 # mount/remount wpmfs
 if [[ ! -d wpmfs ]]; then
   git clone $CONFIG_SRC_WPMFS wpmfs
@@ -49,7 +53,7 @@ cmds=""
 # install micro benchmark
 pushd micro_bench
 source install.sh
-cmds="$cmds$CONFIG_CMD_MICRO"
+# cmds="$cmds$CONFIG_CMD_MICRO"
 popd
 echo -e "\e[32mWpmfs-bench: Micro-benchmark installed.\e[39m"
 
