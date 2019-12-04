@@ -5,6 +5,7 @@
 #include "MicroBench.hpp"
 
 const int PAGE_SIZE_K = 4096;
+const uint64_t FILE_LEN_K = (uint64_t)1 * 1024 * 1024 * 1024;
 
 class BenchPool : public MicroBench {
   uint8_t *PoolAddr_k;
@@ -61,20 +62,21 @@ class BenchPool : public MicroBench {
  public:
   BenchPool(int dumpRounds)
       : PoolAddr_k(NULL),
-        PoolSize_k(((uint64_t)16 * 1024)),
+        // round down`
+        PoolSize_k((FILE_LEN_K / 4096) * 4096),
         dumpRounds_k(dumpRounds) {}
 };
 
 class BenchFile : public MicroBench {
   const int dumpRounds_k;
-  const int filePages_k;
+  const uint64_t filePages_k;
 
   bool dumpToFile() {
     char buffer[PAGE_SIZE_K];
 
     lseek(fd_k, 0, SEEK_SET);
     for (int i = 0; i < filePages_k; ++i) {
-      memset(buffer, i + 'a', PAGE_SIZE_K);
+      memset(buffer, (i + 'a') % 26, PAGE_SIZE_K);
       if (write(fd_k, buffer, PAGE_SIZE_K) != PAGE_SIZE_K) {
         cout << "Failed to write to a file." << endl;
         return false;
@@ -94,7 +96,7 @@ class BenchFile : public MicroBench {
       }
 
       for (int j = 0; j < PAGE_SIZE_K; ++j) {
-        if (buffer[j] != 'a' + i) {
+        if (buffer[j] != (i + 'a') % 26) {
           cout << "Fatal! File may be corrupted." << endl;
           return false;
         }
@@ -123,5 +125,5 @@ class BenchFile : public MicroBench {
 
  public:
   BenchFile(int dumpRounds)
-      : dumpRounds_k(dumpRounds), filePages_k('z' - 'a' + 1) {}
+      : dumpRounds_k(dumpRounds), filePages_k(FILE_LEN_K / 4096) {}
 };

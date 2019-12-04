@@ -62,14 +62,14 @@ class IOController {
     WPMFS_CMD_GET_FS_WEAR
   };
 
-  void request() {
+  bool request() {
     OS_RETURN_CODE ret;
     USIZE len = sizeof(message);
 
     ret = OS_WriteFD(nfd, &message, &len);
-    assert(ret.generic_err == OS_RETURN_CODE_NO_ERROR);
-    assert(message.succ);
+    return ret.generic_err == OS_RETURN_CODE_NO_ERROR;
   }
+
   void fetch() {
     OS_RETURN_CODE ret;
     USIZE len = sizeof(message);
@@ -80,8 +80,7 @@ class IOController {
   }
 
   void requestAndFetch() {
-    request();
-    fetch();
+    if (request()) fetch();
   }
 
  public:
@@ -103,8 +102,7 @@ class IOController {
     message.fd = mfd;
     message.pageoff = pageoff;
     message.page_wcnt = cnt;
-    request();
-    return message.succ == 1;
+    return request();
   }
 
   bool getCnt(uint64_t pageof, uint64_t &cnt) {
@@ -129,6 +127,8 @@ class IOController {
     blk_wcnt = message.blk_wcnt;
     return message.succ == 1;
   }
+
+  bool checkFD(int fd) { return mfd == fd; }
 };
 
 // 通用内存池
@@ -180,7 +180,7 @@ class PinMemAgent {
   PinMemAgent(ADDRINT *addr, ADDRINT len, ADDRINT offset) {
     AppMemPool_g =
         new MemPool<uint8_t>((uint8_t *)(addr), len, offset, LenPage_k);
-    len = len / LenPage_k;
+    len = len / LenPage_k * sizeof(uint64_t);
     PinCntPool_g =
         new MemPool<uint64_t>(new uint64_t[len](), len, 0, sizeof(uint64_t));
   }
@@ -282,11 +282,22 @@ INT32 trigerCntSync(ADDRINT *addr, ADDRINT size) {
 
 VOID syncCnt(ADDRINT *addr, ADDRINT size) { PinMemAgent_g->syncCnt(addr); }
 
+VOID closeBefore(ADDRINT fd) {
+  if (!IOController_g || !IOController_g->checkFD(fd)) return;
+
+  PinMemAgent_g->syncCntAll();
+  delete IOController_g;
+  delete PinMemAgent_g;
+  IOController_g = NULL;
+  PinMemAgent_g = NULL;
+}
+
 /* ===================================================================== */
 /* Instrumentation routines                                              */
 /* ===================================================================== */
 
 VOID Image(IMG img, VOID *v) {
+  // TODO: support multiple mmap
   RTN mmapRtn = RTN_FindByName(img, "mmap");
   if (RTN_Valid(mmapRtn)) {
     RTN_Open(mmapRtn);
@@ -299,6 +310,17 @@ VOID Image(IMG img, VOID *v) {
                    IARG_END                           // 结束参数传递
     );
     RTN_Close(mmapRtn);
+  }
+
+  RTN closeRtn = RTN_FindByName(img, "close");
+  if (RTN_Valid(closeRtn)) {
+    RTN_Open(closeRtn);
+
+    RTN_InsertCall(closeRtn, IPOINT_BEFORE, (AFUNPTR)closeBefore,
+                   IARG_FUNCARG_ENTRYPOINT_VALUE, 0,  // 传递 fd
+                   IARG_END                           // 结束参数传递
+    );
+    RTN_Close(closeRtn);
   }
 }
 
