@@ -25,5 +25,15 @@ plt.title("write distribution of WPMFS")
 plt.xlabel("blocknr")
 plt.ylabel("write times")
 plt.plot(X, Y, marker='o', linestyle='', markersize=0.7, alpha=0.5)
-plt.savefig(sys.argv[2], dpi=120)
+
+pathFigHint = sys.argv[2]
+pathFigReal = ""
+sn = 0
+while 1:
+    pathFigReal = '{0}{1}.png'.format(pathFigHint, sn)
+    if(not os.path.exists(pathFigReal)):
+        break
+    sn += 1
+
+plt.savefig(pathFigReal, dpi=120, format='png')
 plt.show()

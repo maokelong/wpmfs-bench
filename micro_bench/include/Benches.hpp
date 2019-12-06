@@ -62,7 +62,7 @@ class BenchPool : public MicroBench {
  public:
   BenchPool(int dumpRounds)
       : PoolAddr_k(NULL),
-        // round down`
+        // round down
         PoolSize_k((FILE_LEN_K / 4096) * 4096),
         dumpRounds_k(dumpRounds) {}
 };

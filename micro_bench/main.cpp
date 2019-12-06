@@ -7,7 +7,7 @@ int main() {
     exit(-1);
   }
 
-  BenchFile benchFile(1);
+  BenchFile benchFile(2);
   if (benchFile.run()) {
     cout << "Bench file failed." << endl;
     exit(-1);

@@ -3,7 +3,6 @@ set -e
 source configs.sh
 
 # download pin
-export -p
 echo "$CONFIG_SRC_PIN"
 
 pin_tar=$(basename $CONFIG_SRC_PIN)

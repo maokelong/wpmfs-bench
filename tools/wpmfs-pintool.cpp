@@ -245,7 +245,7 @@ class PinMemAgent {
     fs_cap /= LenPage_k;
     for (size_t i = 0; i < fs_cap; ++i) {
       size_t fsBlkCnt;
-      if (IOController_g->getFsBlkCnt(i, fsBlkCnt) && fsBlkCnt != 0)
+      if (IOController_g->getFsBlkCnt(i, fsBlkCnt))
         TraceFile << i << '\t' << fsBlkCnt << endl;
     }
     end = clock();
@@ -388,7 +388,6 @@ int main(int argc, char *argv[]) {
   if (PIN_Init(argc, argv)) {
     return Usage();
   }
-
   // Write to a file since cout and cerr maybe closed by the application
   TraceFile.open(KnobOutputFile.Value().c_str());
   TraceFile.setf(ios::showbase);

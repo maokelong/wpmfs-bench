@@ -33,17 +33,28 @@ RunWhisperCMD() {
 }
 
 RunWhisper() {
+    list_whisper="ycsb tpcc echo"
+
     if [[ ! -f tmpflag ]]; then
+        pushd whisper
+        # to create mmaped files in wpmfs
         find ./ -type f -readable -writable -exec sed -i -e "s@/mnt/wpmfs@/mnt/wpmfs@g" {} +
+
+        # to increase the size of memory pools
         find ./ -type f -name "*.h" -readable -writable -exec sed -i -e "s/1UL \* 1024 \* 1024 \* 1024/4UL * 1024 * 1024 * 1024/g" {} +
-        find ./ -type f -name "*.sh" -readable -writable -exec sed -i -E "s@bin=(\..+)@bin=\"RunWhisperCMD \1\"@g" {} +
-        find ./ -type f -name "*.sh" -readable -writable -exec sed -i -E "s@bin=(\"\..+)@bin=RunWhisperCMD\\\ \1@g" {} +
+
+        # to instrument whisper
+        find ./ -type f -name "*.sh" -readable -writable -exec sed -i -E "s@bin=(\..+)@bin=\"$(realpath $0) \1\"@g" {} +
+        find ./ -type f -name "*.sh" -readable -writable -exec sed -i -E "s@bin=(\"\..+)@bin=$(realpath $0)\\\ \1@g" {} +
+        find ./ -type f -name "*.sh" -readable -writable -exec sed -i -E "s@\/./evaluation/evaluation@$(realpath $0) ./evaluation/evaluation@g" {} +
+
+        # to build whisper
+        ./script.py -b -w {ycsb,tpcc,echo,}
+
+        pushd popd
         touch tmpflag
     fi
 
-    #TODO: to support more benchmarks from whisper
-    # list_whisper="ycsb tpcc echo"
-    list_whisper="tpcc"
     pushd whisper
     for whisper_bench in $list_whisper; do
         ./script.py -r -z large -w $whisper_bench

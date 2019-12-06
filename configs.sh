@@ -9,8 +9,8 @@ CONFIG_SRC_PIN="https://software.intel.com/sites/landingpage/pintool/downloads/p
 CONFIG_SRC_WPMFS="https://github.com/maokelong/wpmfs"
 
 if [[ ! $CONFIG_PATH_CFG ]]; then
-  # fst sourced by wpmfs-bench/run.sh
-  export CONFIG_PATH_CFG=$(dirname $(realpath $0))/configs.sh
+    # fst sourced by wpmfs-bench/run.sh
+    export CONFIG_PATH_CFG=$(dirname $(realpath $0))/configs.sh
 fi
 
 CONFIG_PATH_ROOT=$(dirname $CONFIG_PATH_CFG)
@@ -57,7 +57,13 @@ ExecuteBench() {
     bench=$(basename ${args%% *})
     cmd=${args:${#1}}
     pin_output="${CONFIG_PATH_OUTPUT}/raw.$bench"
-    wrdis_graph="${CONFIG_PATH_OUTPUT}/graph.$bench.png"
+    wrdis_graph="${CONFIG_PATH_OUTPUT}/graph.$bench"
+    
+    # to addionally support whisper-echo
+    if [[ $bench == "evaluation" ]]; then
+        sudo ln -s ./malloc/lib/libtcmalloc_minimal.so.4.1.0 /usr/lib/libtcmalloc_minimal.so.4
+        sudo ln -s ../lib/libkp_kvstore.so.1.0.1 /usr/lib/libkp_kvstore.so.1
+    fi
     
     InstallWpmfs
     sudo time $CONFIG_PIN_PATH/pin \
