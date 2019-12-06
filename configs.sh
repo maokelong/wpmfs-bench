@@ -61,8 +61,9 @@ ExecuteBench() {
     
     # to addionally support whisper-echo
     if [[ $bench == "evaluation" ]]; then
-        sudo ln -s ./malloc/lib/libtcmalloc_minimal.so.4.1.0 /usr/lib/libtcmalloc_minimal.so.4
-        sudo ln -s ../lib/libkp_kvstore.so.1.0.1 /usr/lib/libkp_kvstore.so.1
+        sudo rm -f /usr/lib/libtcmalloc_minimal.so.4 /usr/lib/libkp_kvstore.so.1
+        sudo ln -s $(realpath ./malloc/lib/libtcmalloc_minimal.so.4.1.0) /usr/lib/libtcmalloc_minimal.so.4
+        sudo ln -s $(realpath ../lib/libkp_kvstore.so.1.0.1) /usr/lib/libkp_kvstore.so.1
     fi
     
     InstallWpmfs
