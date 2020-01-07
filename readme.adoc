@@ -1,0 +1,71 @@
+= Readme
+maokelong <maoeklong@qq.com>
+:toc:
+:toclevels: 4
+:sectnums:
+:sectnumlevels: 3
+:stylesheet:
+:icons: font
+
+== 配置环境
+
+* https://mirrors.tuna.tsinghua.edu.cn/ubuntu-releases/16.04/[Unbuntu 16.04]
+* https://mirrors.tuna.tsinghua.edu.cn/kernel/v4.x/[Kernel v4.19.49]
+
+=== 魔改内核
+
+在开发的过程中，出于两种需求：1）使得 WellPM 能够利用内核中的部分函数；2）使得内核能够处理 WellPM 引入的新型页错误，我们对内核做了一定修改。提取修改的部分做成的 patch 见 `tools\patch` 目录。一共涉及三个文件：
+
+* `内核/arch/x86/mm/vmalloc.c`
+* `内核/fs/dax.c`
+* `内核/mm/fault.c`
+
+=== 模拟持久内存
+
+我们需要预留一定持久内存用于挂载 WellPM。在较新的内核下可直接执行如下操作，而无需额外修改内核配置文件。
+
+* 预留 PM 地址空间；
+. 预留多少？
++
+查询可得可用地址空间 `0x0000000100000000-0x0000000c3fffffff`，也就是 4G~49G。这里预留 16GB。
++
+[source,bash]
+----
+dmesg | grep BIOS
+----
+. 怎么预留？
++
+编辑 GRUB，使启动内核时使用指定内核命令行参数「memmap=16G!4G」从 4G 开始的位置预留 32GB。
++
+[source,shell]
+----
+# 编辑 GRUB 配置，修改成「GRUB_CMDLINE_LINUX="memmap=16G!4G"」
+sudo gedit /etc/default/grub
+# 更新 GRUB 引导程序，可能不是 grub2 而是 grub
+sudo grub-mkconfig -o /boot/grub/grub.cfg
+# 重启，使用最新的引导程序进入系统
+sudo reboot
+# 查看 user-defined physical RAM map
+dmesg | grep user
+----
+
+== 安装 WellPM-bench
+
+=== 安装 Filebench
+
+将 https://github.com/filebench/filebench[Filebench] 安装到 `macro_bench/filebench` 目录。
+
+=== 安装 Whisper
+
+将 https://github.com/swapnilh/whisper[Whisper] 安装到 `macro_bench/whisper` 目录。
+
+WARNING: 该步无需执行。多数测试场景下无需运行 Whisper，因此这里暂时屏蔽了相关代码。
+
+== 运行 WellPM-bench
+
+[source,shell]
+----
+bash run.sh
+----
+
+== 配置 WellPM

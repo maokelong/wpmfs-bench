@@ -18,13 +18,14 @@ Y = []
 with open(sys.argv[1], "r") as f:
     for line in f:
         coordinate = line.split()
+        if long(coordinate[1]) == 0:
+            continue
         X.append(long(coordinate[0]))
         Y.append(long(coordinate[1]))
 
-plt.title("write distribution of WPMFS")
 plt.xlabel("blocknr")
 plt.ylabel("write times")
-plt.plot(X, Y, marker='o', linestyle='', markersize=0.7, alpha=0.5)
+plt.semilogy(X, Y, marker='o', linestyle='', markersize=0.7, alpha=0.5)
 
 pathFigHint = sys.argv[2]
 pathFigReal = ""
@@ -36,4 +37,4 @@ while 1:
     sn += 1
 
 plt.savefig(pathFigReal, dpi=120, format='png')
-plt.show()
+# plt.show()

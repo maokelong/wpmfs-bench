@@ -17,7 +17,7 @@ class IOController;
 /* ===================================================================== */
 
 const size_t LenPage_k = 4 << 10;
-const int ThresSync_k = 194;
+const int ThresSync_k = 1024;
 const int BufSize_k = 128;
 
 std::ofstream TraceFile;
@@ -332,6 +332,9 @@ VOID Instruction(INS ins, VOID *v) {
       opcode == XED_ICLASS_CLWB) {
     // 一个小小的优化：
     // 后者仅在前者返回非零的时候执行，以方便前者内联
+    // "Pintools do not need to add explicit locking to instrumentation
+    // routines because Pin calls these routines while holding an internal lock
+    // called the VM lock. "
     INS_InsertIfCall(ins, IPOINT_BEFORE, (AFUNPTR)trigerCntSync,
                      IARG_MEMORYREAD_EA,    // 传递地址
                      IARG_MEMORYREAD_SIZE,  // 传递粒度

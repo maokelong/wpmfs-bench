@@ -1,19 +1,19 @@
---- dax_ori.c	2019-06-09 15:17:25.000000000 +0800
-+++ dax_new.c	2019-11-29 21:39:29.801807800 +0800
+--- linux-4.19.49/fs/dax.c	2019-10-15 17:12:00.816668492 +0800
++++ linux-4.19.49-raw/linux-4.19.49/fs/dax.c	2019-06-09 15:17:25.000000000 +0800
 @@ -162,7 +162,7 @@
   * The important information it's conveying is whether the entry at
   * this index used to be a PMD entry.
   */
--static void dax_wake_mapping_entry_waiter(struct address_space *mapping,
-+void dax_wake_mapping_entry_waiter(struct address_space *mapping,
+-void dax_wake_mapping_entry_waiter(struct address_space *mapping,
++static void dax_wake_mapping_entry_waiter(struct address_space *mapping,
  		pgoff_t index, void *entry, bool wake_all)
  {
  	struct exceptional_entry_key key;
-@@ -179,6 +179,7 @@
+@@ -179,7 +179,6 @@
  	if (waitqueue_active(wq))
  		__wake_up(wq, TASK_NORMAL, wake_all ? 0 : 1, &key);
  }
-+EXPORT_SYMBOL_GPL(dax_wake_mapping_entry_waiter);
+-EXPORT_SYMBOL_GPL(dax_wake_mapping_entry_waiter);
  
  /*
   * Check whether the given slot is locked.  Must be called with the i_pages

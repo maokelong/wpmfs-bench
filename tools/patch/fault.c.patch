@@ -1,25 +1,25 @@
---- fault_ori.c	2019-06-09 15:17:25.000000000 +0800
-+++ fault_new.c	2019-11-29 21:39:52.599206900 +0800
-@@ -1120,6 +1120,22 @@
+--- linux-4.19.49/arch/x86/mm/fault.c	2019-11-29 04:06:12.647238426 +0800
++++ linux-4.19.49-raw/linux-4.19.49/arch/x86/mm/fault.c	2019-06-09 15:17:25.000000000 +0800
+@@ -1120,22 +1120,6 @@
  	if (!pte_present(*pte))
  		return 0;
  
-+	// mkl: look at me
-+	if ((error_code == (X86_PF_WRITE | X86_PF_PROT)) &&
-+	    (address >= VMALLOC_START && address < VMALLOC_END)) {
-+
-+		while (!pte_write(*pte)) {
-+			static long long loop_counter = 0;
-+			extern void msleep(unsigned int msecs);
-+			if(!(loop_counter++ % (2 << 30)))
-+				printk(KERN_ALERT "wpmfs: address = %lx, *pfn = 0x%lx.\n",
-+							 address, (*pte).pte);
-+			 msleep(0);
-+		}
-+
-+		return 1;
-+	}
-+
+-	// mkl: look at me
+-	if ((error_code == (X86_PF_WRITE | X86_PF_PROT)) &&
+-	    (address >= VMALLOC_START && address < VMALLOC_END)) {
+-
+-		while (!pte_write(*pte)) {
+-			static long long loop_counter = 0;
+-			extern void msleep(unsigned int msecs);
+-			if(!(loop_counter++ % (2 << 30)))
+-				printk(KERN_ALERT "wpmfs: address = %lx, *pfn = 0x%lx.\n",
+-							 address, (*pte).pte);
+-			 msleep(0);
+-		}
+-
+-		return 1;
+-	}
+-
  	ret = spurious_fault_check(error_code, pte);
  	if (!ret)
  		return 0;

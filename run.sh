@@ -37,9 +37,10 @@ if [[ ! -d wpmfs ]]; then
     git clone $CONFIG_SRC_WPMFS wpmfs
     echog "Wpmfs-bench: Wpmfs installed."
 fi
+InstallWpmfs
 
 pushd micro_bench
-bash run_micro.sh
+# bash run_micro.sh
 popd
 
 pushd macro_bench

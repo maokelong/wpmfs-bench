@@ -1,0 +1,28 @@
+--- linux-4.19.49/mm/vmalloc.c	2019-12-20 16:12:45.199591356 +0800
++++ linux-4.19.49-raw/linux-4.19.49/mm/vmalloc.c	2019-06-09 15:17:25.000000000 +0800
+@@ -235,7 +235,7 @@
+ 	return nr;
+ }
+ 
+-int vmap_page_range(unsigned long start, unsigned long end,
++static int vmap_page_range(unsigned long start, unsigned long end,
+ 			   pgprot_t prot, struct page **pages)
+ {
+ 	int ret;
+@@ -244,7 +244,6 @@
+ 	flush_cache_vmap(start, end);
+ 	return ret;
+ }
+-EXPORT_SYMBOL_GPL(vmap_page_range);
+ 
+ int is_vmalloc_or_module_addr(const void *x)
+ {
+@@ -1447,8 +1446,6 @@
+ 	return __get_vm_area_node(size, 1, flags, VMALLOC_START, VMALLOC_END,
+ 				  NUMA_NO_NODE, GFP_KERNEL, caller);
+ }
+-EXPORT_SYMBOL(get_vm_area_caller);
+-
+ 
+ /**
+  *	find_vm_area  -  find a continuous kernel virtual area

@@ -72,4 +72,4 @@ if [[ $# -ne 0 ]]; then
 fi
 
 RunFileBench
-RunWhisper
+# RunWhisper
