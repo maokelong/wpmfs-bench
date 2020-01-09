@@ -68,7 +68,7 @@ WARNING: 该步无需执行。多数测试场景下无需运行 Whisper，因此
 bash run.sh
 ----
 
-执行的时候终端上会打印 benchmark 的 OPS，且执行完毕后 output 目录会生成一张反映所有块写入次数的图。
+执行的时候终端上会打印 benchmark 的 OPS，且执行完毕后 output 目录会生成两种类型的图标：一张反映所有块写入次数的图，一张反映某百分位页预期寿命的图。
 
 == 配置 WellPM
 
@@ -100,3 +100,9 @@ WellPM 目前提供了一些配置项。目前配置仅能通过直接修改 `wp
 * CONFIG_FS_WL_SWITCH
 +
 选择损耗均衡功能（0 关闭）
+* CONFIG_FS_INT_THRES
++
+页迁移阈值（以 2 为底的幂）
+* CONFIG_FS_CELL_ENDUR
++
+单元寿命（以 2 为底的幂）

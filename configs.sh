@@ -18,6 +18,7 @@ CONFIG_PATH_TOOLS="$CONFIG_PATH_ROOT/tools"
 CONFIG_PATH_OUTPUT="$CONFIG_PATH_ROOT/output"
 CONFIG_PATH_PINTOOL="$CONFIG_PATH_TOOLS/wpmfs-pintool.cpp"
 CONFIG_PATH_PY_DUMP_WR_DIS="$CONFIG_PATH_TOOLS/dump_write_distribution.py"
+CONFIG_PATH_PY_DUMP_EXP_LIFETIME="$CONFIG_PATH_TOOLS/dump_expected_lifetime.py"
 
 pin_dir=$(basename $CONFIG_SRC_PIN .tar.gz)
 CONFIG_PIN_PATH="$CONFIG_PATH_TOOLS/$pin_dir"
@@ -57,7 +58,8 @@ ExecuteBench() {
     bench=$(basename ${args%% *})
     cmd=${args:${#1}}
     pin_output="${CONFIG_PATH_OUTPUT}/raw.$bench"
-    wrdis_graph="${CONFIG_PATH_OUTPUT}/graph.$bench"
+    wrdis_graph="${CONFIG_PATH_OUTPUT}/graph.wrdis.$bench"
+    explife_graph="${CONFIG_PATH_OUTPUT}/graph.explife.$bench"
     
     # to addionally support whisper-echo
     if [[ $bench == "evaluation" ]]; then
@@ -74,5 +76,6 @@ ExecuteBench() {
     -- $cmd
     
     python $CONFIG_PATH_PY_DUMP_WR_DIS $pin_output $wrdis_graph
+    python $CONFIG_PATH_PY_DUMP_EXP_LIFETIME $pin_output $explife_graph 60 20
     echog "Wpmfs-bench: cmd $cmd finished."
 }
