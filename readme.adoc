@@ -35,7 +35,7 @@ dmesg | grep BIOS
 ----
 . 怎么预留？
 +
-编辑 GRUB，使启动内核时使用指定内核命令行参数「memmap=16G!4G」从 4G 开始的位置预留 32GB。
+编辑 GRUB，使启动内核时使用指定内核命令行参数「memmap=16G!4G」从 4G 开始的位置预留 16GB。
 +
 [source,shell]
 ----
