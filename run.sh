@@ -33,7 +33,7 @@ sudo bash -c 'echo "" > /var/log/syslog'
 echog "Wpmfs-bench: /var/log/syslog cleared."
 
 # download wpmfs
-if [[ ! -d wpmfs ]]; then
+if [[ ! -d wpmfs || "`ls wpmfs`" = "" ]]; then
     git clone $CONFIG_SRC_WPMFS wpmfs
     echog "Wpmfs-bench: Wpmfs installed."
 fi

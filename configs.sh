@@ -76,6 +76,5 @@ ExecuteBench() {
     -- $cmd
     
     python $CONFIG_PATH_PY_DUMP_WR_DIS $pin_output $wrdis_graph
-    python $CONFIG_PATH_PY_DUMP_EXP_LIFETIME $pin_output $explife_graph 60 20
     echog "Wpmfs-bench: cmd $cmd finished."
 }
