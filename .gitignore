@@ -6,3 +6,4 @@ output/
 *.tar.gz
 filebench_selected
 tmpflag
+linux-4.19.49*

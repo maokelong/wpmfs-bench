@@ -9,16 +9,50 @@ maokelong <maoeklong@qq.com>
 
 == 配置环境
 
-* https://mirrors.tuna.tsinghua.edu.cn/ubuntu-releases/16.04/[Unbuntu 16.04]
-* https://mirrors.tuna.tsinghua.edu.cn/kernel/v4.x/[Kernel v4.19.49]
+首先最好确保当前操作系统的版本是 https://mirrors.tuna.tsinghua.edu.cn/ubuntu-releases/16.04/[Unbuntu 16.04]。
 
-=== 魔改内核
+=== 下载内核
 
-在开发的过程中，出于两种需求：1）使得 WellPM 能够利用内核中的部分函数；2）使得内核能够处理 WellPM 引入的新型页错误，我们对内核做了一定修改。提取修改的部分做成的 patch 见 `tools\patch` 目录。一共涉及三个文件：
+本项目基于 Linux v4.19.49 开发。
 
-* `内核/arch/x86/mm/vmalloc.c`
-* `内核/fs/dax.c`
-* `内核/mm/fault.c`
+[source,bash]
+----
+wget https://mirrors.tuna.tsinghua.edu.cn/kernel/v4.x/linux-4.19.49.tar.gz
+tar -xvzf linux-4.19.49.tar.gz
+----
+
+=== 修改内核
+
+在开发的过程中，出于两种需求：1）使得 WellPM 能够利用内核中的部分函数；2）使得内核能够处理 WellPM 引入的新型页错误，我们对内核做了一定修改。
+
+[source,bash]
+----
+pwd # 当前目录为 wpmfs-bench
+patch -Np0 < tools/patch/dax.c.patch
+patch -Np0 < tools/patch/fault.c.patch 
+patch -Np0 < tools/patch/vmalloc.c.patch 
+----
+
+=== 安装内核
+
+. 安装依赖项
++
+[source,bash]
+----
+sudo apt install build-essential libncurses5-dev bison flex \
+    openssl libssl-dev libelf-dev -y
+----
+. 安装内核
+[source,bash]
+----
+pwd # 当前目录为 wpmfs-bench
+cd linux-4.19.49
+make menuconfig # 该步直接 Save 即可
+make -j$(cat /proc/cpuinfo | grep "processor" | wc -l)
+sudo make modules_install
+sudo make install
+sudo update-grub
+----
 
 === 模拟持久内存
 

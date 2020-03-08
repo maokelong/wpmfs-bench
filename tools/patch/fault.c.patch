@@ -1,10 +1,9 @@
 --- linux-4.19.49-raw/arch/x86/mm/fault.c	2019-06-09 00:17:25.000000000 -0700
-+++ linux-4.19.49/arch/x86/mm/fault.c	2020-03-07 08:24:58.553089238 -0800
-@@ -1119,6 +1119,22 @@
- 	pte = pte_offset_kernel(pmd, address);
++++ linux-4.19.49/arch/x86/mm/fault.c	2020-03-08 05:08:40.955456464 -0700
+@@ -1120,6 +1120,22 @@
  	if (!pte_present(*pte))
  		return 0;
-+	
+ 
 +	// mkl: look at me
 +	if ((error_code == (X86_PF_WRITE | X86_PF_PROT)) &&
 +		(address >= VMALLOC_START && address < VMALLOC_END)) {
@@ -20,6 +19,7 @@
 +
 +		return 1;
 +	}
- 
++
  	ret = spurious_fault_check(error_code, pte);
  	if (!ret)
+ 		return 0;
