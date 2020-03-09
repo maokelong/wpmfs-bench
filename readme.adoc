@@ -91,6 +91,7 @@ dmesg | grep user
 pwd # 当前目录为 wpmfs-bench
 cd macro_bench 
 git clone https://github.com/filebench/filebench
+cd filebench
 sudo apt install libtool automake -y
 libtoolize
 aclocal
@@ -121,6 +122,7 @@ sudo apt install python-numpy python-matplotlib -y
 
 [source,shell]
 ----
+pwd # 当前目录为 wpmfs-bench
 bash run.sh
 ----
 
