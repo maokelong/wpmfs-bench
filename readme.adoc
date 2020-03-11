@@ -49,6 +49,7 @@ make bzImage # 同上两个一起相当于 make 或 make all
 sudo make modules_install
 sudo make install
 sudo update-grub
+sudo reboot
 ----
 
 === 模拟持久内存
