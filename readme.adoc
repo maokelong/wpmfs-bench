@@ -6,6 +6,7 @@ maokelong <maoeklong@qq.com>
 :sectnumlevels: 3
 :stylesheet:
 :icons: font
+:source-highlighter: rouge
 
 == 配置环境
 
@@ -111,7 +112,23 @@ INFO: 在执行后续谈到的 `bash run.sh` 之后，`wpmfs-bench/macro_bench/f
 
 将 https://github.com/swapnilh/whisper[Whisper] 安装到 `macro_bench/whisper` 目录。
 
-WARNING: 该步无需执行。多数测试场景下无需运行 Whisper，因此这里暂时屏蔽了相关代码。
+[source,shell]
+----
+pwd # 当前目录为 wpmfs-bench
+cd macro_bench
+
+# to download
+git clone --recursive https://github.com/swapnilh/whisper.git
+cd whisper
+
+# to build
+./script.py -b -w ycsb
+./script.py -b -w tpcc
+./script.py -b -w echo
+----
+
+TIP: 安装 whisper 时会出现诸多问题，可以参考 https://note.youdao.com/ynoteshare1/index.html?id=29733e3fc9f4259d34561d97afb25897&type=note?auto[魏博的笔记] 解决。
+
 
 === 配置依赖项
 
