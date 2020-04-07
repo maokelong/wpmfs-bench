@@ -38,20 +38,26 @@ RunWhisper() {
     if [[ ! -f tmpflag ]]; then
         pushd whisper
         # to create mmaped files in wpmfs
-        find ./ -type f -readable -writable -exec sed -i -e "s@/mnt/wpmfs@/mnt/wpmfs@g" {} +
+        find ./ -type f -readable -writable -exec sed -i -e "s@/mnt/pmfs@/mnt/wpmfs@g" {} +
 
         # to increase the size of memory pools
         find ./ -type f -name "*.h" -readable -writable -exec sed -i -e "s/1UL \* 1024 \* 1024 \* 1024/4UL * 1024 * 1024 * 1024/g" {} +
 
         # to instrument whisper
-        find ./ -type f -name "*.sh" -readable -writable -exec sed -i -E "s@bin=(\..+)@bin=\"$(realpath $0) \1\"@g" {} +
-        find ./ -type f -name "*.sh" -readable -writable -exec sed -i -E "s@bin=(\"\..+)@bin=$(realpath $0)\\\ \1@g" {} +
-        find ./ -type f -name "*.sh" -readable -writable -exec sed -i -E "s@\/./evaluation/evaluation@$(realpath $0) ./evaluation/evaluation@g" {} +
+        find ./ -type f -name "*.sh" -readable -writable -exec sed -i -E "s@bin=(\..+)@bin=\"$PWD/../$0 \1\"@g" {} +
+        find ./ -type f -name "*.sh" -readable -writable -exec sed -i -E "s@bin=(\"\..+)@bin=$PWD/../$0\\\ \1@g" {} +
+        find ./ -type f -name "*.sh" -readable -writable -exec sed -i -E "s@./evaluation/evaluation@$PWD/../$0 ./evaluation/evaluation@g" {} +
+
+        # to fix nstore
+        find ./ -type f -name "*.am" -readable -writable -exec sed -i -E "s@AM_CXXFLAGS = -Wall -Wextra -Werror@AM_CXXFLAGS = -Wall -Wextra -Werror -Wno-c++14-compat@" {} +
+        
 
         # to build whisper
-        ./script.py -b -w {ycsb,tpcc,echo,}
+        ./script.py -b -w ycsb
+        ./script.py -b -w tpcc
+        ./script.py -b -w echo
 
-        pushd popd
+        popd
         touch tmpflag
     fi
 
@@ -72,4 +78,4 @@ if [[ $# -ne 0 ]]; then
 fi
 
 RunFileBench
-# RunWhisper
+RunWhisper
