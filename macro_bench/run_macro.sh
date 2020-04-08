@@ -38,7 +38,7 @@ RunWhisper() {
     if [[ ! -f tmpflag ]]; then
         pushd whisper
         # to create mmaped files in wpmfs
-        find ./ -type f -readable -writable -exec sed -i -e "s@/mnt/pmfs@/mnt/wpmfs@g" {} +
+        find ./ -type f -readable -writable -exec sed -i -e "s@/dev/shm@/mnt/wpmfs@g" {} +
 
         # to increase the size of memory pools
         find ./ -type f -name "*.h" -readable -writable -exec sed -i -e "s/1UL \* 1024 \* 1024 \* 1024/4UL * 1024 * 1024 * 1024/g" {} +
@@ -77,5 +77,5 @@ if [[ $# -ne 0 ]]; then
     exit 0
 fi
 
-RunFileBench
+# RunFileBench
 RunWhisper
